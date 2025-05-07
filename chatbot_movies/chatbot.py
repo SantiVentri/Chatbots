@@ -20,7 +20,7 @@ def buscarPelicula(busqueda):
 # Función de agregar una película al archivo
 def agregarPelicula(title, release, genre, director):
 
-    # Crea una varibale con los parámetros que recibió
+    # Crea una variable con los parámetros que recibió
     nueva_pelicula = {
         'title': title,
         'release': release,
