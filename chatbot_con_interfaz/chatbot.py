@@ -1,23 +1,27 @@
+import os
 import tkinter as tk
+from tkinter import messagebox, simpledialog
 import pandas as pd
 import difflib
 
+ARCHIVO = os.path.join(os.path.dirname(__file__), "preguntas.csv")
+ICONO = os.path.join(os.path.dirname(__file__), "logo.ico")
+
 # Cargar CSV
-df = pd.read_csv('preguntas.csv')
+df = pd.read_csv(ARCHIVO)
 preguntas_lista = df['preguntas'].tolist()
 
-# Función para insertar texto con espacio
-def insertar_mensaje(mensaje):
+def mostrar_respuesta(mensaje):  # Antes: insertar_mensaje
     chat.config(state='normal')
     chat.insert(tk.END, mensaje + "\n", "espaciado")
     chat.config(state='disabled')
     chat.see(tk.END)
 
-# Validar input antes de responder
-def es_input_valido(texto):
-    return len(texto.strip()) >= 8 or len(texto.strip().split()) >= 2
+def agregar_pregunta(pregunta, respuesta):
+    with open(ARCHIVO, mode='a', newline='', encoding='utf-8') as archivo:
+        archivo.write(f'"{pregunta}","{respuesta}"\n')
 
-# Función principal del chatbot
+# Ya se llama responder, se mantiene
 def responder():
     comando = entrada.get().strip()
     entrada.delete(0, tk.END)
@@ -26,33 +30,41 @@ def responder():
         ventana.destroy()
         return
 
-    if not es_input_valido(comando):
-        insertar_mensaje("🤖: Por favor, escribí una consulta más clara (mínimo 8 caracteres o 2 palabras).")
+    if len(comando.strip()) < 8 and len(comando.strip().split()) < 2 and comando.title() not in ["Hola", "Chau"]:
+        mostrar_respuesta("Chatbot: Por favor, escribí una consulta más clara (mínimo 8 caracteres o 2 palabras).")
         return
 
-    insertar_mensaje(f"Tú: {comando}")
+    mostrar_respuesta(f"Tú: {comando}")
 
     coincidencias = df[df['preguntas'].str.contains(comando, case=False, na=False)]
 
     if not coincidencias.empty:
         respuesta = coincidencias.iloc[0]['respuestas']
-        insertar_mensaje(f"🤖: {respuesta}")
+        mostrar_respuesta(f"Chatbot: {respuesta}")
     else:
         similar = difflib.get_close_matches(comando, preguntas_lista, n=1, cutoff=0.5)
         if similar:
             sugerida = similar[0]
             respuesta = df[df['preguntas'] == sugerida].iloc[0]['respuestas']
-            insertar_mensaje(f"🤖: Tal vez quisiste decir: '{sugerida}'")
-            insertar_mensaje(f"🤖: {respuesta}")
+            mostrar_respuesta(f"Chatbot: Tal vez quisiste decir: '{sugerida}'")
+            mostrar_respuesta(f"Chatbot: {respuesta}")
         else:
-            insertar_mensaje("🤖: No encontré una respuesta parecida. ¿Podés reformular la pregunta?")
+            mostrar_respuesta("Chatbot: No encontré una respuesta parecida.")
+            desea_agregar = messagebox.askyesno("Agregar pregunta", "¿Querés agregar esta pregunta?")
+            if desea_agregar:
+                respuesta_usuario = simpledialog.askstring("Tu respuesta", "Escribí qué respuesta esperabas:")
+                if respuesta_usuario:
+                    agregar_pregunta(comando, respuesta_usuario)
+                    df.loc[len(df.index)] = [comando, respuesta_usuario]
+                    preguntas_lista.append(comando)
+                    mostrar_respuesta("Chatbot: ¡Gracias! Ya aprendí esa respuesta.")
 
 # Crear ventana
 ventana = tk.Tk()
-ventana.title("Chatbot UADE")
+ventana.title("CHAD GPT para Python")
 ventana.geometry("500x600")
 ventana.resizable(False, False)
-ventana.iconbitmap('logo.ico')
+ventana.iconbitmap(ICONO)
 
 # Área de chat
 chat = tk.Text(ventana, height=30, width=58, state='disabled', wrap='word')
@@ -60,7 +72,7 @@ chat.pack(pady=10)
 chat.tag_configure("espaciado", spacing3=5)
 
 # Mensaje inicial
-insertar_mensaje("🤖: Bienvenido al chatbot de la UADE. ¿En qué te puedo asistir hoy?")
+mostrar_respuesta("Chatbot: Bienvenido a Chadbot, un chatbot que responde preguntas sobre Python. ¿En qué te puedo asistir hoy?")
 
 # Campo de entrada
 entrada = tk.Entry(ventana, width=50)
